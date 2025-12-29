@@ -172,13 +172,20 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
         \freq, Pseq((root + [12,17,19,15]).midicps, inf),
         \amp, 0.15));
 
+    Pdef(\closeEncounters, Pbind(\instrument, \acid,
+        \dur, 1,
+        \freq, Pseq([62, 64, 60, 48, 55,55,55,55].midicps, inf),
+        \cutoff, 2000,
+        \amp, 0.85));
+
     // ARRANGEMENT
     ~start = {
         var beatTime = ~clock.beats;
         
-        // INTRO: kick + hats (8 bars)
+        // INTRO: kick + hats + Close Encounters theme (8 bars)
         Pdef(\kick).play(~clock, quant:1);
         Pdef(\hat).play(~clock, quant:1);
+        Pdef(\closeEncounters).play(~clock, quant:1);
 
         // BUILD: add sub, bass, perc (4 bars)
         ~clock.schedAbs(beatTime + 32, {
@@ -192,9 +199,10 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
             Pdef(\clap).play(~clock, quant:1);
             Pdef(\openHat).play(~clock, quant:1);
             Pdef(\acid).play(~clock, quant:1);
+            // closeEncounters already playing
         });
 
-        // BREAKDOWN: drop bass/clap, add pad (8 bars)
+        // BREAKDOWN: drop bass/clap, add pad (8 bars) - keep Close Encounters!
         ~clock.schedAbs(beatTime + 112, {
             [\sub,\bass,\clap,\acid].do({ |n| Pdef(n).stop });
             Pdef(\pad).play(~clock, quant:1);
@@ -212,12 +220,13 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
             Pdef(\bass).play(~clock, quant:1);
             Pdef(\clap).play(~clock, quant:1);
             Pdef(\acid).play(~clock, quant:1);
+            // closeEncounters already playing
             Pdef(\stab).play(~clock, quant:1);
         });
 
         // OUTRO: strip down (8 bars)
         ~clock.schedAbs(beatTime + 272, {
-            [\sub,\bass,\clap,\acid,\stab,\openHat,\perc].do({ |n| Pdef(n).stop });
+            [\sub,\bass,\clap,\acid,\closeEncounters,\stab,\openHat,\perc].do({ |n| Pdef(n).stop });
             Pdef(\pad).play(~clock, quant:1);
         });
 
@@ -228,7 +237,7 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
     };
 
     ~stop = {
-        [\kick,\clap,\hat,\openHat,\perc,\sub,\bass,\acid,\stab,\pad].do({ |n| Pdef(n).stop });
+        [\kick,\clap,\hat,\openHat,\perc,\sub,\bass,\acid,\closeEncounters,\stab,\pad].do({ |n| Pdef(n).stop });
     };
 
     // CREATE GUI
