@@ -18,13 +18,25 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
     ~clock = TempoClock.new(126/60); // 126 BPM to start...
 
     // FAT KICK with pitch drop
-    SynthDef(\fatKick, { |out=0, amp=2.0|
+    SynthDef(\fatKick, { |out=0, amp=3.0|
         var env = Env.perc(0.001, 0.4, amp, -8).ar(doneAction:2);
         var freqEnv = Env.perc(0, 0.3, 80, -4).ar;
         var sub = SinOsc.ar(43 + freqEnv, 0, env * 1.5);
         var body = SinOsc.ar(58 + (freqEnv*0.5), 0, env * 0.8);
         var click = HPF.ar(WhiteNoise.ar * Env.perc(0, 0.01, amp*0.6).ar, 4000);
         Out.ar(out, (sub + body + click)!2);
+    }).add;
+
+    // PUNCHY TECH KICK
+    SynthDef(\techKick, { |out=0, amp=3.2|
+        var env = Env.perc(0.001, 0.35, amp, -6).ar(doneAction:2);
+        var freqEnv = Env.perc(0, 0.25, 90, -6).ar;
+        var sub = SinOsc.ar(45 + freqEnv, 0, env * 1.8);
+        var punch = SinOsc.ar(120 + (freqEnv*1.5), 0, env * 0.5);
+        var click = HPF.ar(WhiteNoise.ar * Env.perc(0, 0.008, amp*0.7).ar, 5000);
+        var sig = (sub + punch + click) * 1.1;
+        sig = (sig * 1.2).tanh; // add saturation for extra punch
+        Out.ar(out, sig!2);
     }).add;
 
     // HARD CLAP
@@ -60,7 +72,7 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
     }).add;
 
     // MASSIVE SUB BASS
-    SynthDef(\sub, { |out=0, freq=55, amp=1|
+    SynthDef(\sub, { |out=0, freq=55, amp=1.4|
         var env = Env.perc(0.01, 0.8).ar(doneAction:2);
         var bassBoost = In.kr(~bassAmp); // Remember that bassAmp comes from the control!
         var masterVol = In.kr(~masterAmp);
@@ -69,7 +81,7 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
     }).add;
 
     // GRITTY BASS with distortion
-    SynthDef(\grittyBass, { |out=0, freq=110, amp=0.75, cutoff=2500, res=0.28|
+    SynthDef(\grittyBass, { |out=0, freq=110, amp=0.95, cutoff=2500, res=0.28|
         var env = Env.perc(0.003, 0.35).ar(doneAction:2);
         var bassBoost = In.kr(~bassAmp);
         var distAmt = In.kr(~distAmt); // And the distortion also comes fro mthe controller
@@ -79,6 +91,20 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
         sig = RLPF.ar(sig, cutoff * filterMod, res);
         sig = (sig * (4.0 * distAmt)).tanh; // much harder distortion
         sig = sig * env * amp * bassBoost * masterVol;
+        Out.ar(out, sig!2);
+    }).add;
+
+    // THUMPING BASS
+    SynthDef(\thump, { |out=0, freq=110, amp=0.9|
+        var env = Env.perc(0.001, 0.15, amp, -6).ar(doneAction:2);
+        var bassBoost = In.kr(~bassAmp);
+        var distAmt = In.kr(~distAmt);
+        var masterVol = In.kr(~masterAmp);
+        var sig = Pulse.ar([freq, freq*0.995], 0.3, 0.7).sum;
+        sig = sig + SinOsc.ar(freq*0.5, 0, 0.6); // add sub octave
+        sig = RLPF.ar(sig, freq*4, 0.3);
+        sig = (sig * (2.5 * distAmt)).tanh;
+        sig = sig * env * bassBoost * masterVol;
         Out.ar(out, sig!2);
     }).add;
 
@@ -124,10 +150,40 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
         Out.ar(out, sig * env * amp!2);
     }).add;
 
+    // MASSIVE EXPLOSION
+    SynthDef(\explosion, { |out=0, amp=0.8|
+        var env = Env.perc(0.01, 2.0, amp, -3).ar(doneAction:2);
+        var subImpact = SinOsc.ar(30, 0, env * 1.2); // deep sub hit
+        var boom = BPF.ar(BrownNoise.ar, 50, 1.5) * env * 1.5;
+        var deepBoom = BPF.ar(BrownNoise.ar, 35, 1.8) * env * 1.8;
+        var rumble = LFNoise1.ar(15) * env * 1.5;
+        var deepRumble = LFNoise0.ar(6) * env * 1.2;
+        var subRumble = SinOsc.ar(28, 0, env * 1.0);
+        var sig = subImpact + boom + deepBoom + rumble + deepRumble + subRumble;
+        sig = (sig * 0.9).tanh; // gentle saturation
+        Out.ar(out, sig!2);
+    }).add;
+
+    // ANGELIC CHOIR
+    SynthDef(\choir, { |out=0, freq=440, amp=0.25|
+        var env = Env.linen(2, 6, 2).ar(doneAction:2);
+        var sig1 = SinOsc.ar(freq, 0, 0.3);
+        var sig2 = SinOsc.ar(freq * 2, 0, 0.15); // 2nd harmonic
+        var sig3 = SinOsc.ar(freq * 3, 0, 0.08); // 3rd harmonic
+        var sig4 = SinOsc.ar(freq * 4, 0, 0.05); // 4th harmonic
+        var sig5 = SinOsc.ar(freq * 5, 0, 0.03); // 5th harmonic
+        var chorus = SinOsc.ar([freq*0.998, freq*1.002], 0, 0.2).sum; // slight detune
+        var sig = (sig1 + sig2 + sig3 + sig4 + sig5 + chorus) * env * amp;
+        sig = sig + CombC.ar(sig, 0.2, 0.1, 3); // add reverb-like delay
+        Out.ar(out, sig!2);
+    }).add;
+
     s.sync;
 
     // PATTERNS
     Pdef(\kick, Pbind(\instrument, \fatKick, \dur, 1));
+    
+    Pdef(\techKick, Pbind(\instrument, \techKick, \dur, 1));
     
     Pdef(\clap, Pbind(\instrument, \hardClap, 
         \dur, Pseq([Rest(1),1,Rest(1),1], inf), \amp, 0.85));
@@ -148,13 +204,18 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
     Pdef(\sub, Pbind(\instrument, \sub,
         \dur, 1,
         \freq, Pseq((root + [0,0,0,0]).midicps, inf),
-        \amp, 0.85));
+        \amp, 1.1));
 
     Pdef(\bass, Pbind(\instrument, \grittyBass,
         \dur, Pseq([0.25,0.25,0.5,0.25,0.25,0.5], inf),
         \freq, Pseq((root + [0,12,7,0,12,5]).midicps, inf),
         \cutoff, Pseq([2400,2800,3000,2600,2900,2700], inf),
-        \amp, 0.45));
+        \amp, 0.60));
+
+    Pdef(\thump, Pbind(\instrument, \thump,
+        \dur, Pseq([0.5,0.25,0.25,0.5,0.5], inf),
+        \freq, Pseq((root + [0,0,12,0,7]).midicps, inf),
+        \amp, 0.85));
 
     Pdef(\acid, Pbind(\instrument, \acid,
         \dur, Pseq([0.25,0.25,0.25,0.25]*4, inf), // Slow down the 'tune' here
@@ -184,13 +245,22 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
         
         // INTRO: kick + hats + Close Encounters theme (8 bars)
         Pdef(\kick).play(~clock, quant:1);
+       Pdef(\techKick).play(~clock, quant:1);
         Pdef(\hat).play(~clock, quant:1);
         Pdef(\closeEncounters).play(~clock, quant:1);
+
+        // Schedule explosions every 16 bars starting from beat 0
+        [0, 64, 128, 192, 256, 320].do({ |beat|
+            ~clock.schedAbs(beatTime + beat, {
+                Synth(\explosion, [\amp, 0.8]);
+            });
+        });
 
         // BUILD: add sub, bass, perc (4 bars)
         ~clock.schedAbs(beatTime + 32, {
             Pdef(\sub).play(~clock, quant:1);
             Pdef(\bass).play(~clock, quant:1);
+            Pdef(\thump).play(~clock, quant:1);
             Pdef(\perc).play(~clock, quant:1);
         });
 
@@ -204,9 +274,13 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
 
         // BREAKDOWN: drop bass/clap, add pad (8 bars) - keep Close Encounters!
         ~clock.schedAbs(beatTime + 112, {
-            [\sub,\bass,\clap,\acid].do({ |n| Pdef(n).stop });
+            [\sub,\bass,\thump,\clap,\acid].do({ |n| Pdef(n).stop });
             Pdef(\pad).play(~clock, quant:1);
             Pdef(\stab).play(~clock, quant:1);
+            // Angels singing
+            Synth(\choir, [\freq, (root + 24).midicps, \amp, 0.3]);
+            Synth(\choir, [\freq, (root + 31).midicps, \amp, 0.25]);
+            Synth(\choir, [\freq, (root + 36).midicps, \amp, 0.22]);
         });
 
         // RISER before drop (last 4 bars of breakdown)
@@ -218,6 +292,7 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
         ~clock.schedAbs(beatTime + 144, {
             Pdef(\sub).play(~clock, quant:1);
             Pdef(\bass).play(~clock, quant:1);
+            Pdef(\thump).play(~clock, quant:1);
             Pdef(\clap).play(~clock, quant:1);
             Pdef(\acid).play(~clock, quant:1);
             // closeEncounters already playing
@@ -226,7 +301,7 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
 
         // OUTRO: strip down (8 bars)
         ~clock.schedAbs(beatTime + 272, {
-            [\sub,\bass,\clap,\acid,\closeEncounters,\stab,\openHat,\perc].do({ |n| Pdef(n).stop });
+            [\sub,\bass,\thump,\clap,\acid,\closeEncounters,\stab,\openHat,\perc].do({ |n| Pdef(n).stop });
             Pdef(\pad).play(~clock, quant:1);
         });
 
@@ -237,7 +312,7 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
     };
 
     ~stop = {
-        [\kick,\clap,\hat,\openHat,\perc,\sub,\bass,\acid,\closeEncounters,\stab,\pad].do({ |n| Pdef(n).stop });
+        [\kick,\clap,\hat,\openHat,\perc,\sub,\bass,\thump,\acid,\closeEncounters,\stab,\pad].do({ |n| Pdef(n).stop });
     };
 
     // CREATE GUI
