@@ -575,6 +575,12 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
     // Clean up when window closes
     win.onClose_({ ~levelTask.stop; });
 
+    // Auto-record to WAV so it can be converted to MP3 later.
+    s.prepareForRecord;
+    s.record(path: (PathName(thisProcess.nowExecutingPath).pathOnly +/+ "banger.wav"));
+
     ~start.();
+    // Stop recording after the arrangement ends (~160s at 126 BPM).
+    SystemClock.sched(170, { s.stopRecording; });
 });
 )
