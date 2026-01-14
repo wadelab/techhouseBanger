@@ -174,7 +174,7 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
         Out.ar(out, sig * masterVol!2);
     }).add;
 
-    // ANGELIC CHOIR
+    // ANGELIC CHOIR - like the alien thingies
     SynthDef(\choir, { |out=0, freq=440, amp=0.25|
         var env = Env.linen(2, 6, 2).ar(doneAction:2);
         var masterVol = In.kr(~masterAmp);
@@ -489,7 +489,7 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
         [\kick,\techKick,\clap,\hat,\openHat,\perc,\sub,\bass,\thump,\acid,\closeEncounters,\stab,\pad,\psyKicks,\psyBass,\psyHats,\raveStabs,\hoover,\snareRoll,\lazers].do({ |n| Pdef(n).stop });
     };
 
-    // CREATE GUI
+    // CREATE GUI - this is all standard stuff built into SC!
     win = Window("Tech House Control", Rect(100, 100, 400, 380)).front;
     win.view.decorator = FlowLayout(win.view.bounds);
     
