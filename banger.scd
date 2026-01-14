@@ -117,7 +117,7 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
 
     // ACID-STYLE LEAD
     SynthDef(\acid, { |out=0, freq=220, amp=0.3, cutoff=1000, res=0.15|
-        var env = Env.perc(0.01, 0.25).ar(doneAction:2);
+        var env = Env.perc(0.01, 0.8).ar(doneAction:2);
         var distAmt = In.kr(~distAmt);
         var filterMod = In.kr(~filterFreq);
         var masterVol = In.kr(~masterAmp);
@@ -328,6 +328,12 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
         \freq, Pseq((root + [12,17,19,15]).midicps, inf),
         \amp, 0.15));
 
+    Pdef(\closeEncountersIntro, Pbind(\instrument, \acid,
+        \dur, 4,
+        \freq, Pseq([62, 64, 60, 48, 55].midicps, inf),
+        \cutoff, 2000,
+        \amp, 0.85));
+
     Pdef(\closeEncounters, Pbind(\instrument, \acid,
         \dur, 1,
         \freq, Pseq([62, 64, 60, 48, 55,0,0,0].midicps, inf),
@@ -376,11 +382,24 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
     ~start = {
         var beatTime = ~clock.beats;
         
-        // INTRO: kick + hats + Close Encounters theme (8 bars)
-        Pdef(\kick).play(~clock, quant:1);
-       Pdef(\techKick).play(~clock, quant:1);
-        Pdef(\hat).play(~clock, quant:1);
-        Pdef(\closeEncounters).play(~clock, quant:1);
+        // SLOW INTRO: Close Encounters theme alone (8 bars)
+        Pdef(\closeEncountersIntro).play(~clock, quant:1);
+        
+        // Schedule explosions every 16 bars starting from beat 0
+        [0, 64, 128, 192, 256, 320].do({ |beat|
+            ~clock.schedAbs(beatTime + beat, {
+                Synth(\explosion, [\amp, 0.8]);
+            });
+        });
+        
+        // INTRO: kick + hats + Close Encounters theme (after 8 bars)
+        ~clock.schedAbs(beatTime + 32, {
+            Pdef(\closeEncountersIntro).stop;
+            Pdef(\kick).play(~clock, quant:1);
+            Pdef(\techKick).play(~clock, quant:1);
+            Pdef(\hat).play(~clock, quant:1);
+            Pdef(\closeEncounters).play(~clock, quant:1);
+        });
 
         // Schedule explosions every 16 bars starting from beat 0
         [0, 64, 128, 192, 256, 320].do({ |beat|
@@ -390,7 +409,7 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
         });
 
         // BUILD: add sub, bass, perc (4 bars)
-        ~clock.schedAbs(beatTime + 32, {
+        ~clock.schedAbs(beatTime + 64, {
             Pdef(\sub).play(~clock, quant:1);
             Pdef(\bass).play(~clock, quant:1);
             Pdef(\thump).play(~clock, quant:1);
@@ -398,7 +417,7 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
         });
 
         // GROOVE: full beat (16 bars)
-        ~clock.schedAbs(beatTime + 48, {
+        ~clock.schedAbs(beatTime + 80, {
             Pdef(\clap).play(~clock, quant:1);
             Pdef(\openHat).play(~clock, quant:1);
             Pdef(\acid).play(~clock, quant:1);
@@ -407,7 +426,7 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
         });
 
         // PSYTRANCE LAYER: add rolling psytrance drums over the groove (8 bars)
-        ~clock.schedAbs(beatTime + 80, {
+        ~clock.schedAbs(beatTime + 112, {
             Pdef(\psyKicks).play(~clock, quant:1);
             Pdef(\psyBass).play(~clock, quant:1);
             Pdef(\psyHats).play(~clock, quant:1);
@@ -416,7 +435,7 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
         });
 
         // BREAKDOWN: drop bass/clap, add pad (8 bars) - keep Close Encounters!
-        ~clock.schedAbs(beatTime + 112, {
+        ~clock.schedAbs(beatTime + 144, {
             [\sub,\bass,\thump,\clap,\acid,\psyKicks,\psyBass,\psyHats,\raveStabs,\hoover,\lazers].do({ |n| Pdef(n).stop });
             Pdef(\pad).play(~clock, quant:1);
             Pdef(\stab).play(~clock, quant:1);
@@ -427,13 +446,13 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
         });
 
         // RISER before drop (last 4 bars of breakdown)
-        ~clock.schedAbs(beatTime + 128, {
+        ~clock.schedAbs(beatTime + 160, {
             Synth(\riser, [\dur, 16 * (60/126)]); // 4 bars
             Pdef(\snareRoll).play(~clock, quant:1); // snare roll building tension
         });
 
         // DROP: everything back HARD (32 bars) - massive energy!
-        ~clock.schedAbs(beatTime + 144, {
+        ~clock.schedAbs(beatTime + 176, {
             Pdef(\snareRoll).stop;
             Pdef(\sub).play(~clock, quant:1);
             Pdef(\bass).play(~clock, quant:1);
@@ -448,20 +467,20 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
         });
 
         // PSYTRANCE DROP: bring back the rolling drums (16 bars)
-        ~clock.schedAbs(beatTime + 208, {
+        ~clock.schedAbs(beatTime + 240, {
             Pdef(\psyKicks).play(~clock, quant:1);
             Pdef(\psyBass).play(~clock, quant:1);
             Pdef(\psyHats).play(~clock, quant:1);
         });
 
         // OUTRO: strip down (8 bars)
-        ~clock.schedAbs(beatTime + 272, {
+        ~clock.schedAbs(beatTime + 304, {
             [\sub,\bass,\thump,\clap,\acid,\closeEncounters,\stab,\openHat,\perc,\psyKicks,\psyBass,\psyHats,\raveStabs,\hoover,\lazers].do({ |n| Pdef(n).stop });
             Pdef(\pad).play(~clock, quant:1);
         });
 
         // END
-        ~clock.schedAbs(beatTime + 304, {
+        ~clock.schedAbs(beatTime + 336, {
             [\kick,\techKick,\hat,\pad].do({ |n| Pdef(n).stop });
         });
     };
