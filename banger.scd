@@ -223,6 +223,56 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
         Out.ar(out, sig!2);
     }).add;
 
+    // ENERGETIC RAVE STAB
+    SynthDef(\raveStab, { |out=0, freq=440, amp=0.4|
+        var env = Env.perc(0.001, 0.15).ar(doneAction:2);
+        var distAmt = In.kr(~distAmt);
+        var filterMod = In.kr(~filterFreq);
+        var masterVol = In.kr(~masterAmp);
+        var sig = Saw.ar([freq, freq*1.01, freq*0.99, freq*2.003], 0.4).sum;
+        sig = RLPF.ar(sig, freq*4*filterMod, 0.15);
+        sig = (sig * (4.5 * distAmt)).tanh;
+        sig = sig * env * amp * masterVol;
+        Out.ar(out, sig!2);
+    }).add;
+
+    // HOOVER SYNTH - classic rave sound
+    SynthDef(\hoover, { |out=0, freq=110, amp=0.35|
+        var env = Env.perc(0.01, 0.4).ar(doneAction:2);
+        var distAmt = In.kr(~distAmt);
+        var filterMod = In.kr(~filterFreq);
+        var masterVol = In.kr(~masterAmp);
+        var sig = Saw.ar([freq, freq*1.01, freq*2.02, freq*3.01], 0.3).sum;
+        sig = sig + Pulse.ar([freq*0.5, freq*0.501], 0.5, 0.4).sum;
+        sig = RLPF.ar(sig, (freq*6*env*filterMod).clip(100, 8000), 0.2);
+        sig = (sig * (3.5 * distAmt)).tanh;
+        sig = sig * env * amp * masterVol;
+        Out.ar(out, sig!2);
+    }).add;
+
+    // SNARE ROLL
+    SynthDef(\snare, { |out=0, amp=0.5|
+        var env = Env.perc(0.001, 0.12).ar(doneAction:2);
+        var masterVol = In.kr(~masterAmp);
+        var noise = WhiteNoise.ar;
+        var tone = SinOsc.ar(220, 0, env * 0.3);
+        var body = BPF.ar(noise * env, 2200, 0.5);
+        var sig = (tone + body) * amp * masterVol;
+        Out.ar(out, sig!2);
+    }).add;
+
+    // LAZER ZAP
+    SynthDef(\lazer, { |out=0, amp=0.3|
+        var env = Env.perc(0.001, 0.25).ar(doneAction:2);
+        var freqEnv = Env.perc(0, 0.2, 1, -8).ar;
+        var masterVol = In.kr(~masterAmp);
+        var sig = Saw.ar(1200 + (freqEnv * 2400), 0.5);
+        sig = RLPF.ar(sig, 1200 + (freqEnv * 4000), 0.1);
+        sig = (sig * 3.5).tanh;
+        sig = sig * env * amp * masterVol;
+        Out.ar(out, sig!2);
+    }).add;
+
     s.sync;
 
     // PATTERNS
@@ -300,6 +350,28 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
         \dur, Pseq([0.125], inf), // 32nd notes
         \amp, Pseq([0.22,0.14,0.18,0.12], inf)));
 
+    // RAVE STABS - high energy chords
+    Pdef(\raveStabs, Pbind(\instrument, \raveStab,
+        \dur, Pseq([0.25,0.25,Rest(0.5)], inf),
+        \freq, Pseq((root + [24,31,28,24]).midicps, inf),
+        \amp, 0.5));
+
+    // HOOVER SYNTH PATTERN - classic rave riff
+    Pdef(\hoover, Pbind(\instrument, \hoover,
+        \dur, Pseq([0.5,0.25,0.25], inf),
+        \freq, Pseq((root + [0,7,12,7,5,0]).midicps, inf),
+        \amp, 0.42));
+
+    // SNARE ROLL PATTERN
+    Pdef(\snareRoll, Pbind(\instrument, \snare,
+        \dur, 0.25,
+        \amp, Pseq([0.4,0.5,0.55,0.6], inf)));
+
+    // LAZER ZAPS - sporadic energy bursts
+    Pdef(\lazers, Pbind(\instrument, \lazer,
+        \dur, Pseq([Rest(1),1,Rest(0.5),0.5], inf),
+        \amp, 0.35));
+
     // ARRANGEMENT
     ~start = {
         var beatTime = ~clock.beats;
@@ -330,6 +402,7 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
             Pdef(\clap).play(~clock, quant:1);
             Pdef(\openHat).play(~clock, quant:1);
             Pdef(\acid).play(~clock, quant:1);
+            Pdef(\lazers).play(~clock, quant:1);
             // closeEncounters already playing
         });
 
@@ -338,11 +411,13 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
             Pdef(\psyKicks).play(~clock, quant:1);
             Pdef(\psyBass).play(~clock, quant:1);
             Pdef(\psyHats).play(~clock, quant:1);
+            Pdef(\raveStabs).play(~clock, quant:1);
+            Pdef(\hoover).play(~clock, quant:1);
         });
 
         // BREAKDOWN: drop bass/clap, add pad (8 bars) - keep Close Encounters!
         ~clock.schedAbs(beatTime + 112, {
-            [\sub,\bass,\thump,\clap,\acid,\psyKicks,\psyBass,\psyHats].do({ |n| Pdef(n).stop });
+            [\sub,\bass,\thump,\clap,\acid,\psyKicks,\psyBass,\psyHats,\raveStabs,\hoover,\lazers].do({ |n| Pdef(n).stop });
             Pdef(\pad).play(~clock, quant:1);
             Pdef(\stab).play(~clock, quant:1);
             // Angels singing
@@ -354,15 +429,20 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
         // RISER before drop (last 4 bars of breakdown)
         ~clock.schedAbs(beatTime + 128, {
             Synth(\riser, [\dur, 16 * (60/126)]); // 4 bars
+            Pdef(\snareRoll).play(~clock, quant:1); // snare roll building tension
         });
 
-        // DROP: everything back HARD (32 bars) - wait do we ever get to this?
+        // DROP: everything back HARD (32 bars) - massive energy!
         ~clock.schedAbs(beatTime + 144, {
+            Pdef(\snareRoll).stop;
             Pdef(\sub).play(~clock, quant:1);
             Pdef(\bass).play(~clock, quant:1);
             Pdef(\thump).play(~clock, quant:1);
             Pdef(\clap).play(~clock, quant:1);
             Pdef(\acid).play(~clock, quant:1);
+            Pdef(\raveStabs).play(~clock, quant:1);
+            Pdef(\hoover).play(~clock, quant:1);
+            Pdef(\lazers).play(~clock, quant:1);
             // closeEncounters already playing
             Pdef(\stab).play(~clock, quant:1);
         });
@@ -376,7 +456,7 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
 
         // OUTRO: strip down (8 bars)
         ~clock.schedAbs(beatTime + 272, {
-            [\sub,\bass,\thump,\clap,\acid,\closeEncounters,\stab,\openHat,\perc,\psyKicks,\psyBass,\psyHats].do({ |n| Pdef(n).stop });
+            [\sub,\bass,\thump,\clap,\acid,\closeEncounters,\stab,\openHat,\perc,\psyKicks,\psyBass,\psyHats,\raveStabs,\hoover,\lazers].do({ |n| Pdef(n).stop });
             Pdef(\pad).play(~clock, quant:1);
         });
 
@@ -387,7 +467,7 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
     };
 
     ~stop = {
-        [\kick,\techKick,\clap,\hat,\openHat,\perc,\sub,\bass,\thump,\acid,\closeEncounters,\stab,\pad,\psyKicks,\psyBass,\psyHats].do({ |n| Pdef(n).stop });
+        [\kick,\techKick,\clap,\hat,\openHat,\perc,\sub,\bass,\thump,\acid,\closeEncounters,\stab,\pad,\psyKicks,\psyBass,\psyHats,\raveStabs,\hoover,\snareRoll,\lazers].do({ |n| Pdef(n).stop });
     };
 
     // CREATE GUI
