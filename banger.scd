@@ -504,16 +504,16 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
         .numMajorTicks_(3);
     win.view.decorator.nextLine;
     
-    // Update level meter from server
-    ~levelTask = Task({
+    // Update level meter from server using AppClock for GUI thread safety
+    ~levelTask = Routine({
         loop {
-            s.peakCPU.postln;
-            ~levelView.value_(s.avgCPU / 100);
-            ~levelView.peakLevel_(s.peakCPU / 100);
+            AppClock.sched(0, {
+                ~levelView.value_(s.avgCPU / 100);
+                ~levelView.peakLevel_(s.peakCPU / 100);
+            });
             0.1.wait;
         };
-    });
-    ~levelTask.start;
+    }).play(SystemClock);
     
     win.view.decorator.nextLine;
     
@@ -575,12 +575,31 @@ s.waitForBoot({ // wait for server to boot - boot the server from scratch each t
     // Clean up when window closes
     win.onClose_({ ~levelTask.stop; });
 
-    // Auto-record to WAV so it can be converted to MP3 later.
-    s.prepareForRecord;
-    s.record(path: (PathName(thisProcess.nowExecutingPath).pathOnly +/+ "banger.wav"));
-
-    ~start.();
-    // Stop recording after the arrangement ends (~160s at 126 BPM).
-    SystemClock.sched(170, { s.stopRecording; });
+    // Start the arrangement and recording after a short delay to ensure everything is ready
+    fork {
+        1.0.wait; // Give the SynthDefs time to fully load
+        
+        // Stop any existing recording
+        if(s.recorder.notNil, { 
+            s.stopRecording; 
+            0.5.wait; 
+        });
+        
+        // Start recording
+        s.prepareForRecord("/Users/alexwade/techhouseBanger/banger.wav");
+        0.1.wait;
+        s.record;
+        "Recording started...".postln;
+        
+        // Start the arrangement
+        ~start.();
+    };
+    
+    // Stop recording after the full arrangement (336 beats at 126 BPM = ~160 seconds)
+    // Add extra time for safety
+    SystemClock.sched(165, { 
+        s.stopRecording; 
+        "Recording saved to banger.wav".postln;
+    });
 });
 )
